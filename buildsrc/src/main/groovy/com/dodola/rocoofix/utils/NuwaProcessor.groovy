@@ -3,8 +3,6 @@
  */
 package com.dodola.rocoofix.utils
 
-import com.dodola.rocoofix.RocooFixPlugin
-import com.dodola.rocoofix.utils.classref.ClassReferenceListBuilder
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
@@ -14,36 +12,10 @@ import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
-
 /**
  * Created by jixin.jia on 15/11/10.
  */
 class NuwaProcessor {
-
-//
-//    public void processClasses(File inputFile,  HashSet<String> includePackage, HashSet<String> excludeClass, String dirName, Map hashMap, File patchDir) {
-//        def path = inputFile.absolutePath
-//        println("====inputFile-------->" + path)
-//        if (path.endsWith(".class") && !path.contains("/R\$") && !path.endsWith("/R.class") && !path.endsWith("/BuildConfig.class")) {
-//            if (NuwaSetUtils.isIncluded(path, includePackage)) {
-//                if (!NuwaSetUtils.isExcluded(path, excludeClass)) {
-//                    def bytes = NuwaProcessor.processClass(inputFile)
-//                    path = path.split("${dirName}/")[1]
-//                    def hash = DigestUtils.shaHex(bytes)
-//                    hashFile.append(RocooUtils.format(path, hash))
-//
-//                    if (RocooUtils.notSame(hashMap, path, hash)) {
-//                        def file = new File("${patchDir}/${path}")
-//                        file.getParentFile().mkdirs()
-//                        if (!file.exists()) {
-//                            file.createNewFile()
-//                        }
-//                        FileUtils.writeByteArrayToFile(file, bytes)
-//                    }
-//                }
-//            }
-//        }
-//    }
 
 
     public
@@ -53,8 +25,8 @@ class NuwaProcessor {
             def optJar = new File(jarFile.getParent(), jarFile.name + ".opt")
             def file = new JarFile(jarFile);
 
-            ClassReferenceListBuilder referenceListBuilder = new ClassReferenceListBuilder(patchDir.getAbsolutePath());
-            referenceListBuilder.addRoots(jarFile.getAbsolutePath());
+//            ClassReferenceListBuilder referenceListBuilder = new ClassReferenceListBuilder(patchDir.getAbsolutePath());
+//            referenceListBuilder.addRoots(jarFile.getAbsolutePath());
 
             Enumeration enumeration = file.entries();
             JarOutputStream jarOutputStream = new JarOutputStream(new FileOutputStream(optJar));
@@ -70,26 +42,25 @@ class NuwaProcessor {
                 if (shouldProcessClassInJar(entryName, includePackage, excludeClass)) {
                     def bytes = referHackWhenInit(inputStream);
                     jarOutputStream.write(bytes);
-
                     def hash = DigestUtils.shaHex(bytes)
-                    println("file hash:--------------->" + entryName + ":" + hash)
                     hashFile.append(RocooUtils.format(entryName, hash))
 
                     if (RocooUtils.notSame(map, entryName, hash)) {
 
-                        def entryFile = new File("${patchDir}/${entryName}")
+                        def entryFile = new File("${patchDir}${File.separator}${entryName}")
                         entryFile.getParentFile().mkdirs()
                         if (!entryFile.exists()) {
                             entryFile.createNewFile()
                         }
                         FileUtils.writeByteArrayToFile(entryFile, bytes)
 
-                        if (RocooFixPlugin.rocooConfig.scanref) {
-                            referenceListBuilder.run(entryName)
-                            referenceListBuilder.clearCache()
-                        }
+//                        if (RocooFixPlugin.rocooConfig.scanref) {
+//                            referenceListBuilder.run(entryName)
+//                            referenceListBuilder.clearCache()
+//                        }
                     }
-                } else {
+                }
+                else {
                     jarOutputStream.write(IOUtils.toByteArray(inputStream));
                 }
                 jarOutputStream.closeEntry();
@@ -97,10 +68,10 @@ class NuwaProcessor {
             jarOutputStream.close();
             file.close();
 
-//            if (jarFile.exists()) {
-//                jarFile.delete()
-//            }
-//            optJar.renameTo(jarFile)
+            if (jarFile.exists()) {
+                jarFile.delete()
+            }
+            optJar.renameTo(jarFile)
         }
 
     }
@@ -119,9 +90,25 @@ class NuwaProcessor {
                     @Override
                     void visitInsn(int opcode) {
                         if ("<init>".equals(name) && opcode == Opcodes.RETURN) {
+                            Label l1 = new Label();
+                            super.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/Boolean", "FALSE", "Ljava/lang/Boolean;");
+                            super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+                            super.visitJumpInsn(Opcodes.IFEQ, l1);
+                            super.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
                             super.visitLdcInsn(Type.getType("Lcom/dodola/rocoo/Hack;"));
+                            super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/Object;)V", false);
+                            super.visitLabel(l1);
                         }
                         super.visitInsn(opcode);
+                    }
+
+                    @Override
+                    public void visitMaxs(int maxStack, int maxLocal) {
+                        if ("<init>".equals(name)) {
+                            super.visitMaxs(maxStack + 2, maxLocal);
+                        } else {
+                            super.visitMaxs(maxStack, maxLocal);
+                        }
                     }
                 }
                 return mv;
@@ -158,10 +145,10 @@ class NuwaProcessor {
         outputStream.write(bytes)
         inputStream.close()
         outputStream.close()
-//        if (file.exists()) {
-//            file.delete()
-//        }
-//        optClass.renameTo(file)
+        if (file.exists()) {
+            file.delete()
+        }
+        optClass.renameTo(file)
         return bytes
     }
 }

@@ -22,7 +22,6 @@ public class RocooUtils {
         def notSame = false
         if (map) {
             def value = map.get(name)
-            println("notSame-------->" + value + "," + name + "," + hash)
             if (value) {
                 if (!value.equals(hash)) {
                     notSame = true
@@ -90,7 +89,7 @@ public class RocooUtils {
         if (classDir.listFiles() != null && classDir.listFiles().size()) {
             StringBuilder builder = new StringBuilder();
 
-            def baseDirectoryPath = classDir.getAbsolutePath() + "/";
+            def baseDirectoryPath = classDir.getAbsolutePath() + File.separator;
             getFilesHash(baseDirectoryPath, classDir).each {
                 builder.append(it)
             }
@@ -107,12 +106,11 @@ public class RocooUtils {
                 sdkDir = System.getenv("ANDROID_HOME")
             }
 
-            println("-----------sdkDir:" + sdkDir)
             if (sdkDir) {
                 def cmdExt = Os.isFamily(Os.FAMILY_WINDOWS) ? '.bat' : ''
                 def stdout = new ByteArrayOutputStream()
                 project.exec {
-                    commandLine "${sdkDir}/build-tools/${project.android.buildToolsVersion}/dx${cmdExt}",
+                    commandLine "${sdkDir}${File.separator}build-tools${File.separator}${project.android.buildToolsVersion}${File.separator}dx${cmdExt}",
                             '--dex',
                             "--output=${new File(classDir.getParent(), PATCH_NAME).absolutePath}",
                             "${classDir.absolutePath}"
@@ -168,12 +166,11 @@ public class RocooUtils {
 
             dexTask.inputs.files.files.each {
                 if (it.exists()) {
-                    println("--------->" + it.absolutePath+","+"intermediates/classes/${variant.dirName}")
                     if (it.isDirectory()) {
                         Collection<File> jars = FileUtils.listFiles(it, extensions, true);
                         files.addAll(jars)
 
-                        if (it.absolutePath.toLowerCase().endsWith("intermediates/classes/${variant.dirName}".toLowerCase())) {
+                        if (it.absolutePath.toLowerCase().endsWith("intermediates${File.separator}classes${File.separator}${variant.dirName}".toLowerCase())) {
                             files.add(it)
                         }
                     } else if (it.name.endsWith(SdkConstants.DOT_JAR)) {
